@@ -3,6 +3,7 @@ import copy
 
 import numpy as np
 import cv2
+from sklearn.preprocessing import normalize
 
 import open3d as o3d
 
@@ -38,23 +39,27 @@ def perspective2Ortho3DPoints(depth_path, vfov=60, hfov=60, pixel_width=320, pix
     intrinsic_mat = cameraIntrinsicTransform(vfov, hfov, pixel_width, pixel_height)
 
     dense_depth = readDepth(depth_path)
-    dense_point = np.zeros((k_pixel_height, k_pixel_width, 3))
+    dense_points = np.zeros((k_pixel_height, k_pixel_width, 3))
     assert(dense_depth.shape[0] == k_pixel_height and dense_depth.shape[1] == k_pixel_width)
 
-    dense_point[:, :, 2] = dense_depth / depth_scale
-    dense_point[:, :, 0] = np.arange(1, k_pixel_width + 1)
+    dense_points[:, :, 2] = dense_depth / depth_scale
+    dense_points[:, :, 0] = np.arange(1, k_pixel_width + 1)
     temp_arange = np.zeros((k_pixel_width, k_pixel_height, 1))
     temp_arange[:, :, 0] = np.arange(1, k_pixel_height + 1)
-    dense_point[:, :, 1] = temp_arange.T
+    dense_points[:, :, 1] = temp_arange.T
 
-    dense_point[:, :, 0] = (dense_point[:, :, 0] - intrinsic_mat[0][2]) * dense_point[:, :, 2] / intrinsic_mat[0][0]
-    dense_point[:, :, 1] = (dense_point[:, :, 1] - intrinsic_mat[1][2]) * dense_point[:, :, 2] / intrinsic_mat[1][1]
+    # No need to do this for calculation confidence map
+    # dense_points[:, :, 0] = -1 * (dense_points[:, :, 0] - intrinsic_mat[0][2]) * dense_points[:, :, 2] / intrinsic_mat[0][0]
+    # dense_points[:, :, 1] = -1 * (dense_points[:, :, 1] - intrinsic_mat[1][2]) * dense_points[:, :, 2] / intrinsic_mat[1][1]
 
-    dense_point_vis = np.reshape(dense_point, (k_pixel_height * k_pixel_width, 3))
-    point_cloud_vis = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(dense_point_vis))
-    o3d.visualization.draw_geometries([point_cloud_vis])
+    dense_points[:, :, 0] = (dense_points[:, :, 0] - intrinsic_mat[0][2]) * dense_points[:, :, 2] / intrinsic_mat[0][0]
+    dense_points[:, :, 1] = (dense_points[:, :, 1] - intrinsic_mat[1][2]) * dense_points[:, :, 2] / intrinsic_mat[1][1]
 
-    return dense_point
+    # dense_points_vis = np.reshape(dense_points, (k_pixel_height * k_pixel_width, 3))
+    # point_cloud_vis = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(dense_points_vis))
+    # o3d.visualization.draw_geometries([point_cloud_vis])
+
+    return dense_points
 
 def getPointCloudAndVis(depth_path, vfov=60, hfov=60, pixel_width=320, pixel_height=240, depth_scale=4000):
     dense_depth = o3d.io.read_image(depth_path)
@@ -75,12 +80,31 @@ def getPointCloudAndVis(depth_path, vfov=60, hfov=60, pixel_width=320, pixel_hei
     # o3d.visualization.draw_geometries([point_cloud, inversed_point_cloud])
     o3d.visualization.draw_geometries([inversed_point_cloud])
 
-if __name__ == "__main__":
-    getPointCloudAndVis("preparation/data/scanNet/depth/000100.png",
-                k_vfov, k_hfov, k_pixel_width, k_pixel_height, k_depth_scale)
+def calculateConfidence(normal_path, dense_points):
+    dense_normal = readRGB(normal_path)
+    dense_normal = (dense_normal / 255.) * 2 - 1
 
-    perspective2Ortho3DPoints("preparation/data/scanNet/depth/000100.png",
+    dense_normal_norm = np.linalg.norm(dense_normal, axis=2)
+    dense_normal_norm = np.reshape(dense_normal_norm, (dense_normal_norm.shape[0], dense_normal_norm.shape[1], 1))
+    dense_normal = dense_normal / dense_normal_norm
+
+    inv_incident_ray = dense_points * -1
+    inv_incident_ray_norm = np.linalg.norm(inv_incident_ray, axis=2)
+    inv_incident_ray_norm = np.reshape(inv_incident_ray_norm, (inv_incident_ray_norm.shape[0], inv_incident_ray_norm.shape[1], 1))
+    inv_incident_ray = inv_incident_ray / inv_incident_ray_norm
+
+    conf = np.sum(dense_normal * inv_incident_ray, axis=2)
+
+    return conf
+
+if __name__ == "__main__":
+    # getPointCloudAndVis("preparation/data/interiorNet/depth/0.png",
+    #             k_vfov, k_hfov, k_pixel_width, k_pixel_height, k_depth_scale)
+
+    dense_points = perspective2Ortho3DPoints("preparation/data/interiorNet/depth/0.png",
                             k_vfov, k_hfov, k_pixel_width, k_pixel_height, k_depth_scale)
 
+    conf = calculateConfidence("preparation/data/interiorNet/normal/2.png", dense_points)
 
-    print("Go Lakers!")
+    # conf = conf * 255.
+    # cv2.imwrite("preparation/data/interiorNet/confOut/2.png", conf)
