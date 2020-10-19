@@ -425,10 +425,16 @@ class MaskNoiseNet(nn.Module):
         up_model_mask = []
         for i in range(n_downsampling):  # add upsampling layers
             mult = 2 ** (n_downsampling - i)
-            up_model_mask += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
-                                         kernel_size=3, stride=2,
-                                         padding=1, output_padding=1,
-                                         bias=use_bias),
+            # up_model_mask += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
+            #                              kernel_size=3, stride=2,
+            #                              padding=1, output_padding=1,
+            #                              bias=use_bias),
+            #           norm_layer(int(ngf * mult / 2)),
+            #           nn.ReLU(True)]
+
+            # convtranspose to resize & conv
+            up_model_mask += [nn.UpsamplingBilinear2d(scale_factor=2)]
+            up_model_mask += [nn.Conv2d(ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=1, padding=1, bias=use_bias),
                       norm_layer(int(ngf * mult / 2)),
                       nn.ReLU(True)]
         up_model_mask += [nn.ReflectionPad2d(3)]
@@ -440,10 +446,16 @@ class MaskNoiseNet(nn.Module):
         up_model_noise = []
         for i in range(n_downsampling):  # add upsampling layers
             mult = 2 ** (n_downsampling - i)
-            up_model_noise += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
-                                         kernel_size=3, stride=2,
-                                         padding=1, output_padding=1,
-                                         bias=use_bias),
+            # up_model_noise += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
+            #                              kernel_size=3, stride=2,
+            #                              padding=1, output_padding=1,
+            #                              bias=use_bias),
+            #           norm_layer(int(ngf * mult / 2)),
+            #           nn.ReLU(True)]
+
+            # convtranspose to resize & conv
+            up_model_noise += [nn.UpsamplingBilinear2d(scale_factor=2)]
+            up_model_noise += [nn.Conv2d(ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=1, padding=1, bias=use_bias),
                       norm_layer(int(ngf * mult / 2)),
                       nn.ReLU(True)]
         up_model_noise += [nn.ReflectionPad2d(3)]

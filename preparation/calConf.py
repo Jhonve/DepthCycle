@@ -55,9 +55,9 @@ def perspective2Ortho3DPoints(depth_path, vfov=60, hfov=60, pixel_width=320, pix
     dense_points[:, :, 0] = (dense_points[:, :, 0] - intrinsic_mat[0][2]) * dense_points[:, :, 2] / intrinsic_mat[0][0]
     dense_points[:, :, 1] = (dense_points[:, :, 1] - intrinsic_mat[1][2]) * dense_points[:, :, 2] / intrinsic_mat[1][1]
 
-    # dense_points_vis = np.reshape(dense_points, (k_pixel_height * k_pixel_width, 3))
-    # point_cloud_vis = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(dense_points_vis))
-    # o3d.visualization.draw_geometries([point_cloud_vis])
+    dense_points_vis = np.reshape(dense_points, (k_pixel_height * k_pixel_width, 3))
+    point_cloud_vis = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(dense_points_vis))
+    o3d.visualization.draw_geometries([point_cloud_vis])
 
     return dense_points
 
@@ -101,10 +101,10 @@ if __name__ == "__main__":
     # getPointCloudAndVis("preparation/data/interiorNet/depth/0.png",
     #             k_vfov, k_hfov, k_pixel_width, k_pixel_height, k_depth_scale)
 
-    dense_points = perspective2Ortho3DPoints("preparation/data/interiorNet/depth/0.png",
+    dense_points = perspective2Ortho3DPoints("preparation/data/interiorNet/depth/2.png",
                             k_vfov, k_hfov, k_pixel_width, k_pixel_height, k_depth_scale)
 
-    conf = calculateConfidence("preparation/data/interiorNet/normal/2.png", dense_points)
+    # conf = calculateConfidence("preparation/data/interiorNet/normal/2.png", dense_points)
 
     # conf = conf * 255.
     # cv2.imwrite("preparation/data/interiorNet/confOut/2.png", conf)
